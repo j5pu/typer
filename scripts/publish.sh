@@ -2,4 +2,4 @@
 
 set -e
 
-flit publish
+flit publish --repository j5pu
