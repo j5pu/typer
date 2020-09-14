@@ -17,7 +17,7 @@ endef
 export PRINT_HELP_PYSCRIPT
 SHELL := $(shell command -v bash)
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-CURRENT := $(shell git describe --abbrev=0 --tags 2>/dev/null; true)
+TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null; true)
 DIR := $(shell dirname "$(realpath $(firstword $(MAKEFILE_LIST)))")
 PROJECT := $(shell basename $(DIR))
 PACKAGE := typer
@@ -29,7 +29,7 @@ help: ## help
 vars:  ## vars
 	@echo "BUMP: $(BUMP)"
 	@echo "BRANCH: $(BRANCH)"
-	@echo "CURRENT: $(CURRENT)"
+	@echo "TAG: $(TAG)"
 	@echo "DIR: $(DIR)"
 	@echo "PROJECT: $(PROJECT)"
 	@echo "PACKAGE: $(PACKAGE)"
@@ -91,7 +91,8 @@ flit-publish: clean ## publish
 	@source "$(ACTIVATE)" && set -e; flit publish --repository j5pu
 
 git:  ## git add all
+	@echo "BRANCH: $(BRANCH), TAG: $(TAG)"
 	@git add . --all
 	@source "$(ACTIVATE)" && bump2version --allow-dirty $(BUMP)
 	@git push -u origin $(BRANCH) --tags
-
+	@echo "BRANCH: $$(git rev-parse --abbrev-ref HEAD), TAG: $$(git describe --abbrev=0 --tags 2>/dev/null; true)"
