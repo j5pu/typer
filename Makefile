@@ -1,4 +1,4 @@
-.PHONY: help vars clean deps docs-build docs-live format lint test-files test test-cov-html flit-build flit-publish git
+.PHONY: help vars deps clean format test git flit-build flit-publish git
 .DEFAULT_GOAL := help
 
 BUMP := patch  # major|minor|patch
@@ -34,12 +34,17 @@ vars:  ## vars
 	@echo "PROJECT: $(PROJECT)"
 	@echo "PACKAGE: $(PACKAGE)"
 
+deps: clean ## installs dev dependencies
+	@source "$(ACTIVATE)" && python -m pip install --upgrade flit pip setuptools wheel pytest-runner setuptools_scm
+	@source "$(ACTIVATE)" && python -m flit install --deps all
+
 clean:  ## clean
 	@/bin/rm -fr build/ > /dev/null 2>&1 | true
 	@/bin/rm -fr dist/ > /dev/null 2>&1 | true
 	@/bin/rm -fr site/ > /dev/null 2>&1 | true
 	@/bin/rm -fr .coverage > /dev/null 2>&1 | true
 	@/bin/rm -fr coverage.xml > /dev/null 2>&1 | true
+	@/bin/rm -fr htmlcov > /dev/null 2>&1 | true
 	@/bin/rm -fr .eggs/ > /dev/null 2>&1 | true
 	@find . -name '*.egg-info' -exec /bin/rm -fr {} + > /dev/null 2>&1 | true
 	@find . -name '*.egg' -exec /bin/rm -f {} + > /dev/null 2>&1 | true
@@ -51,44 +56,23 @@ clean:  ## clean
 	@/bin/rm -fr .pytest_cache > /dev/null 2>&1 | true
 	@find . -name '.mypy_cache' -exec /bin/rm -rf {} + > /dev/null 2>&1 | true
 
-deps: clean ## installs dev dependencies
-	@source "$(ACTIVATE)" && python -m pip install flit
-	@source "$(ACTIVATE)" && python -m flit install --deps all
-
-docs-build: clean  ## build docs
-	@source "$(ACTIVATE)" && python -m mkdocs build
-	cp ./docs/index.md ./README.md
-
-docs-live:  ## docs-live
-	@source "$(ACTIVATE)" && set -e; mkdocs serve --dev-addr 127.0.0.1:8008
-
 format:  ## format
 	@source "$(ACTIVATE)" && set -x; isort --force-single-line-imports $(PACKAGE) tests docs_src
-	@source "$(ACTIVATE)" && set -x; autoflake --remove-all-unused-imports --recursive --remove-unused-variables --in-place docs_src $(PACKAGE) tests --exclude=__init__.py
+	@source "$(ACTIVATE)" && set -x; autoflake --remove-all-unused-imports --recursive --remove-unused-variables \
+                                               --in-place docs_src $(PACKAGE) tests --exclude=__init__.py
 	@source "$(ACTIVATE)" && set -x; black $(PACKAGE) tests docs_src
 	@source "$(ACTIVATE)" && set -x; isort $(PACKAGE) tests docs_src
 
-lint:  ## lint
+test: clean  ## test
+	@source "$(ACTIVATE)" && darglint -v 2 -s google --log-level DEBUG --strictness full $(PROJECT)/*.py
 	@source "$(ACTIVATE)" && set -e; set -x; mypy $(PACKAGE)
 	@source "$(ACTIVATE)" && set -e; set -x; black $(PACKAGE) tests docs_src --check
 	@source "$(ACTIVATE)" && set -e; set -x; isort $(PACKAGE) tests docs_src --check-only
-
-test-files:  ## test-files
-	@source "$(ACTIVATE)" && set -e; set -x; diff --brief docs/index.md README.md
-	@source "$(ACTIVATE)" && set -e; set -x; if grep -r --include "*.md" "Usage: tutorial" ./docs ; then echo "Incorrect console demo"; exit 1 ; fi
-	@source "$(ACTIVATE)" && set -e; set -x; if grep -r --include "*.md" "python tutorial" ./docs ; then echo "Incorrect console demo"; exit 1 ; fi
-
-test: clean test-files lint  ## test
-	@source "$(ACTIVATE)" && set -e; set -x; pytest --cov=$(PACKAGE) --cov=tests --cov=docs_src --cov-report=term-missing --cov-report=xml -o console_output_style=progress --forked --numprocesses=auto
-
-test-cov-html:
-	@source "$(ACTIVATE)" && set -e; set -x; pytest --cov-report=html --cov=$(PACKAGE) --cov=tests --cov=docs_src --cov-report=term-missing --cov-report=xml -o console_output_style=progress --forked --numprocesses=auto pwd
-
-flit-build: clean ## publish
-	@source "$(ACTIVATE)" && set -e; flit build
-
-flit-publish: clean ## publish
-	@source "$(ACTIVATE)" && set -e; flit publish --repository j5pu
+	@source "$(ACTIVATE)" && set -e; set -x; pytest --ignore docs_src --tb=short --strict --doctest-modules \
+                                                    --doctest-continue-on-failure
+	@source "$(ACTIVATE)" && set -e; set -x; pytest --cov=$(PACKAGE) --cov-report=html --cov=tests --cov=docs_src \
+                                                    --cov-report=term-missing --cov-report=xml \
+                                                    -o console_output_style=progress --forked --numprocesses=auto
 
 git:  ## git add all
 	@echo "BRANCH: $(BRANCH), TAG: $(TAG)"
@@ -96,3 +80,9 @@ git:  ## git add all
 	@source "$(ACTIVATE)" && bump2version --allow-dirty $(BUMP)
 	@git push -u origin $(BRANCH) --tags
 	@echo "BRANCH: $$(git rev-parse --abbrev-ref HEAD), TAG: $$(git describe --abbrev=0 --tags 2>/dev/null; true)"
+
+flit-build: clean ## publish
+	@source "$(ACTIVATE)" && set -e; flit build
+
+flit-publish: clean ## publish
+	@source "$(ACTIVATE)" && set -e; flit publish --repository j5pu

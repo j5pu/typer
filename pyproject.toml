@@ -1,5 +1,5 @@
 [build-system]
-requires = ["flit_core >=2,<3", "wheel"]
+requires = ["flit_core >=2,<3", "wheel", "pytest-runner", "setuptools_scm", "setuptools", "pip"]
 build-backend = "flit_core.buildapi"
 
 [tool.flit.metadata]
@@ -55,7 +55,10 @@ doc = [
 ]
 dev = [
     "autoflake >=1.3.1,<2.0.0",
+    "bump2version",
+    "darglint",
     "flake8 >=3.8.3,<4.0.0",
+    "twine",
 ]
 all = [
     "colorama >=0.4.3,<0.5.0",

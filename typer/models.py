@@ -76,6 +76,12 @@ def Default(value: DefaultType) -> DefaultType:
 
     It's used internally to recognize when a default value has been overwritten, even
     if the new value is `None`.
+
+    Args:
+        value: value
+
+    Returns:
+        DefaultType:
     """
     return DefaultPlaceholder(value)  # type: ignore
 
